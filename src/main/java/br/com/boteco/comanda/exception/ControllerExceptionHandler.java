@@ -1,11 +1,20 @@
 package br.com.boteco.comanda.exception;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.time.format.DateTimeParseException;
+
+/**
+ * Classe global para manipulação de exceções na aplicação.
+ */
 @ControllerAdvice
 public class ControllerExceptionHandler {
 
@@ -37,5 +46,47 @@ public class ControllerExceptionHandler {
     public ResponseEntity<StandardError> sql(SQLException e, HttpServletRequest request){
         StandardError err = new StandardError(System.currentTimeMillis(), HttpStatus.INTERNAL_SERVER_ERROR.value(), "Erro de conexão com o banco de dados", e.getMessage(), request.getRequestURI());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
+    }
+
+    @ExceptionHandler(FormatDataInvalidException.class)
+    public ResponseEntity<StandardError> handleFormatDataInvalid(FormatDataInvalidException e, HttpServletRequest request) {
+        StandardError err = new StandardError(System.currentTimeMillis(), HttpStatus.BAD_REQUEST.value(),"Erro de Formatação de Dados", e.getMessage(), request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<StandardError> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        Throwable cause = ex.getCause();
+
+        // Verifica se a causa raiz é um erro de formatação de data
+        if (cause instanceof InvalidFormatException invalidFormatException) {
+            if (invalidFormatException.getCause() instanceof DateTimeParseException) {
+                // Retorna uma mensagem clara para o cliente sobre o erro de formatação de data
+                StandardError err = new StandardError(System.currentTimeMillis(), HttpStatus.BAD_REQUEST.value(),"Erro de Formatação de Dados","Formato de data inválido. Use o padrão 'yyyy-MM-dd'.", request.getRequestURI());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+            }
+        }
+
+        // Mensagem genérica para outros casos
+        StandardError err = new StandardError(System.currentTimeMillis(), HttpStatus.BAD_REQUEST.value(),"Erro de leitura JSON","Erro de leitura na requisição. Verifique o formato dos dados enviados.", request.getRequestURI());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ValidationError> handleValidationExceptions(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        ValidationError err = new ValidationError();
+        err.setTimestamp(System.currentTimeMillis());
+        err.setStatus(HttpStatus.BAD_REQUEST.value());
+        err.setError("Erro de validação");
+        err.setMessage("Um ou mais campos estão inválidos.");
+        err.setPath(request.getRequestURI());
+
+        // Captura os erros específicos de campo
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            err.addError(error.getField(), error.getDefaultMessage());
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
     }
 }

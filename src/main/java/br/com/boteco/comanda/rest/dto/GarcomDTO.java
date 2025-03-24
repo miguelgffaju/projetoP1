@@ -1,36 +1,35 @@
 package br.com.boteco.comanda.rest.dto;
 
 import br.com.boteco.comanda.model.GarcomModel;
-import jakarta.persistence.Column;
-import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.modelmapper.ModelMapper;
 
 import java.time.LocalDate;
 
+/**
+ * DTO (Data Transfer Object) para encapsular dados do garçom em operações de entrada e saída na API.
+ */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class GarcomDTO {
 
-    @Column(name = "nome", length = 255, nullable = false)
+    private Long idGarcom;
     private String nome;
-
-    @Column(name = "dataNascimento", nullable = false)
     private LocalDate dataNascimento;
-
-    @Column(name = "cpf", length = 11, nullable = false, unique = true)
     private String cpf;
-
-    @Column(name = "telefone",  length = 11, nullable = false, unique = true)
     private String telefone;
-
-    @Email(message = "E-mail inválido.")
-    @Column(name = "email",  length = 255, nullable = false, unique = true)
     private String email;
-
-    @Column(name = "sexo", length = 1, nullable = false)
     private String sexo;
 
-    public GarcomModel toModel(){
+    /**
+     * Converte o DTO (GarcomDTO) para sua entidade correspondente (GarcomModel).
+     *
+     * @return Uma instância de GarcomModel com os dados mapeados a partir do GarcomDTO.
+     */
+    public GarcomModel toModel() {
         ModelMapper modelMapper = new ModelMapper();
         return modelMapper.map(this, GarcomModel.class);
     }
